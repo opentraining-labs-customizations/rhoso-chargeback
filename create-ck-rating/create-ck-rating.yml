@@ -1,10 +1,10 @@
 ---
 - name: "Create first CloudKitty rating on RHOSO"
-  hosts: "{{ default('localhost') }}"
+  hosts: localhost
   gather_facts: true
   environment:
-    KUBECONFIG: "{{ default(ansible_env.HOME + '/.kube/config' }}"
-    PATH: "{{ default(ansible_env.PATH) }}"
+    KUBECONFIG: "{{ ansible_env.HOME + '/.kube/config' }}"
+    PATH: "{{ ansible_env.PATH }}"
   vars:
     openstack_namespace: openstack
     flavor_name: m1.tiny

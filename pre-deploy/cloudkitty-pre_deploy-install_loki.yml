@@ -1,10 +1,10 @@
 ---
 - name: "Install loki for cloudkitty"
-  hosts: "{{ default('localhost') }}"
+  hosts: localhost
   gather_facts: true
   environment:
-    KUBECONFIG: "{{ default(ansible_env.HOME + '/.kube/config' }}"
-    PATH: "{{ default(ansible_env.PATH) }}"
+    KUBECONFIG: "{{ ansible_env.HOME + '/.kube/config' }}"
+    PATH: "{{ ansible_env.PATH }}"
   tasks:
     - name: Wait for the route kind to be present in the cluster
       ansible.builtin.command:
