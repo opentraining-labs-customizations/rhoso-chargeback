@@ -1,0 +1,136 @@
+---
+- name: "Create first CloudKitty rating on RHOSO"
+  hosts: "{{ default('localhost') }}"
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ default(ansible_env.HOME + '/.kube/config' }}"
+    PATH: "{{ default(ansible_env.PATH) }}"
+  vars:
+    openstack_namespace: openstack
+    flavor_name: m1.tiny
+    rating_cost: "0.3"
+    group_name: instance_uptime_flavor_id
+    service_name: instance
+    field_name: flavor_id
+    mapping_type: flat
+  tasks:
+    - name: Discover openstackclient pod
+      ansible.builtin.shell:
+        cmd: |
+          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name | head -1
+      register: osclient_pod
+      failed_when: osclient_pod.stdout == ""
+
+    - name: Set openstackclient pod name
+      ansible.builtin.set_fact:
+        os_pod: "{{ osclient_pod.stdout | regex_replace('^pod/', '') }}"
+
+    - name: Enable hashmap rating module
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating module enable hashmap
+
+    - name: Verify hashmap module is enabled
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating module list -f json
+      register: module_list
+      until: (module_list.stdout | from_json | selectattr('Module', 'equalto', 'hashmap') | first).Enabled == true
+      retries: 5
+      delay: 5
+
+    - name: Create rating group
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap group create {{ group_name }} -f json
+      register: group_result
+
+    - name: Set group ID
+      ansible.builtin.set_fact:
+        group_id: "{{ (group_result.stdout | from_json)['Group ID'] }}"
+
+    - name: Create service matching rule
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap service create {{ service_name }} -f json
+      register: service_result
+
+    - name: Set service ID
+      ansible.builtin.set_fact:
+        service_id: "{{ (service_result.stdout | from_json)['Service ID'] }}"
+
+    - name: Create field matching rule
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap field create {{ service_id }} {{ field_name }} -f json
+      register: field_result
+
+    - name: Set field ID
+      ansible.builtin.set_fact:
+        field_id: "{{ (field_result.stdout | from_json)['Field ID'] }}"
+
+    - name: Get flavor ID
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack flavor show {{ flavor_name }} -f json
+      register: flavor_result
+
+    - name: Set flavor ID
+      ansible.builtin.set_fact:
+        flavor_id: "{{ (flavor_result.stdout | from_json).id }}"
+
+    - name: Create rating mapping
+      ansible.builtin.shell:
+        cmd: >
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} --
+          openstack rating hashmap mapping create {{ rating_cost }}
+          --field-id {{ field_id }}
+          --value {{ flavor_id }}
+          -g {{ group_id }}
+          -t {{ mapping_type }}
+          -f json
+      register: mapping_result
+
+    - name: Display mapping result
+      ansible.builtin.debug:
+        msg: "Rating mapping created: {{ mapping_result.stdout | from_json }}"
+
+    - name: Get rating dataframes
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating dataframes get -f json
+      register: dataframes_result
+      ignore_errors: true
+
+    - name: Display dataframes
+      ansible.builtin.debug:
+        msg: "{{ dataframes_result.stdout }}"
+      when: dataframes_result.rc == 0
+
+    - name: Get rating summary
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating summary get -f json
+      environment:
+        OS_RATING_API_VERSION: "2"
+      register: summary_result
+      ignore_errors: true
+
+    - name: Display rating summary
+      ansible.builtin.debug:
+        msg: "{{ summary_result.stdout }}"
+      when: summary_result.rc == 0
+
+    - name: Get rating summary by type
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating summary get -g type -f json
+      environment:
+        OS_RATING_API_VERSION: "2"
+      register: summary_by_type_result
+      ignore_errors: true
+
+    - name: Display rating summary by type
+      ansible.builtin.debug:
+        msg: "{{ summary_by_type_result.stdout }}"
+      when: summary_by_type_result.rc == 0

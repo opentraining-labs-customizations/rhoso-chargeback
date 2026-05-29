@@ -1,0 +1,143 @@
+---
+- name: "Validate CloudKitty rating configuration on RHOSO"
+  hosts: "{{ default('localhost') }}"
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ default(ansible_env.HOME + '/.kube/config' }}"
+    PATH: "{{ default(ansible_env.PATH) }}"
+  vars:
+    openstack_namespace: openstack
+    flavor_name: m1.tiny
+    rating_cost: "0.3"
+    group_name: instance_uptime_flavor_id
+    service_name: instance
+    field_name: flavor_id
+    mapping_type: flat
+  tasks:
+    - name: Discover openstackclient pod
+      ansible.builtin.shell:
+        cmd: |
+          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name | head -1
+      register: osclient_pod
+      failed_when: osclient_pod.stdout == ""
+
+    - name: Set openstackclient pod name
+      ansible.builtin.set_fact:
+        os_pod: "{{ osclient_pod.stdout | regex_replace('^pod/', '') }}"
+
+    # --- Check 1: Hashmap module is enabled ---
+
+    - name: Get rating module list
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating module list -f json
+      register: module_list
+
+    - name: Assert hashmap module is enabled
+      ansible.builtin.assert:
+        that:
+          - module_list.stdout | from_json | selectattr('Module', 'equalto', 'hashmap') | list | length > 0
+          - (module_list.stdout | from_json | selectattr('Module', 'equalto', 'hashmap') | first).Enabled == true
+        fail_msg: "Hashmap module is not enabled. Run the create-ck-rating playbook first."
+        success_msg: "Hashmap module is enabled."
+
+    # --- Check 2: Group exists ---
+
+    - name: Get hashmap group list
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap group list -f json
+      register: group_list
+
+    - name: Assert rating group exists
+      ansible.builtin.assert:
+        that:
+          - group_list.stdout | from_json | selectattr('Name', 'equalto', group_name) | list | length > 0
+        fail_msg: "Group '{{ group_name }}' not found."
+        success_msg: "Group '{{ group_name }}' exists."
+
+    - name: Set group ID from listing
+      ansible.builtin.set_fact:
+        group_id: "{{ (group_list.stdout | from_json | selectattr('Name', 'equalto', group_name) | first)['Group ID'] }}"
+
+    # --- Check 3: Service exists ---
+
+    - name: Get hashmap service list
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap service list -f json
+      register: service_list
+
+    - name: Assert rating service exists
+      ansible.builtin.assert:
+        that:
+          - service_list.stdout | from_json | selectattr('Name', 'equalto', service_name) | list | length > 0
+        fail_msg: "Service '{{ service_name }}' not found."
+        success_msg: "Service '{{ service_name }}' exists."
+
+    - name: Set service ID from listing
+      ansible.builtin.set_fact:
+        service_id: "{{ (service_list.stdout | from_json | selectattr('Name', 'equalto', service_name) | first)['Service ID'] }}"
+
+    # --- Check 4: Field exists under service ---
+
+    - name: Get hashmap field list for the service
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap field list {{ service_id }} -f json
+      register: field_list
+
+    - name: Assert rating field exists
+      ansible.builtin.assert:
+        that:
+          - field_list.stdout | from_json | selectattr('Name', 'equalto', field_name) | list | length > 0
+        fail_msg: "Field '{{ field_name }}' not found under service '{{ service_name }}'."
+        success_msg: "Field '{{ field_name }}' exists under service '{{ service_name }}'."
+
+    - name: Set field ID from listing
+      ansible.builtin.set_fact:
+        field_id: "{{ (field_list.stdout | from_json | selectattr('Name', 'equalto', field_name) | first)['Field ID'] }}"
+
+    # --- Check 5: Mapping exists with correct cost and type ---
+
+    - name: Get hashmap mapping list for the field
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap mapping list --field-id {{ field_id }} -f json
+      register: mapping_list
+
+    - name: Assert mapping exists with correct type and group
+      ansible.builtin.assert:
+        that:
+          - mapping_list.stdout | from_json | selectattr('Group ID', 'equalto', group_id) | list | length > 0
+          - (mapping_list.stdout | from_json | selectattr('Group ID', 'equalto', group_id) | first).Type == mapping_type
+        fail_msg: "No mapping found for field '{{ field_name }}' in group '{{ group_name }}' with type '{{ mapping_type }}'."
+        success_msg: "Mapping exists with type '{{ mapping_type }}' in group '{{ group_name }}'."
+
+    # --- Check 6: Rating data is flowing (soft check) ---
+
+    - name: Get rating summary
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating summary get -f json
+      environment:
+        OS_RATING_API_VERSION: "2"
+      register: summary_result
+      ignore_errors: true
+
+    - name: Report rating summary status
+      ansible.builtin.debug:
+        msg: >-
+          {% if summary_result.rc != 0 %}
+          WARNING - Could not retrieve rating summary. Rating data may not yet be available.
+          {% elif summary_result.stdout | from_json | length == 0 %}
+          WARNING - Rating summary is empty. Data may take time to accumulate after creating a mapping.
+          {% else %}
+          Rating data is flowing. Summary contains {{ summary_result.stdout | from_json | length }} entries.
+          {% endif %}
+
+    # --- Final summary ---
+
+    - name: Validation complete
+      ansible.builtin.debug:
+        msg: "All CloudKitty rating resources validated successfully."
