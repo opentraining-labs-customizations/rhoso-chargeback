@@ -6,7 +6,7 @@ This playbook verifies that the CloudKitty hashmap rating configuration was appl
 
 - Access to the OpenShift cluster with `oc` configured (`KUBECONFIG` set or `~/.kube/config` present)
 - An openstackclient pod running in the `openstack` namespace
-- The `create-ck-rating` playbook has been run previously
+- Step by step for creating a rating in the training has been completed (or, the `create-ck-rating` playbook has been run previously)
 
 ## Running the playbook
 
