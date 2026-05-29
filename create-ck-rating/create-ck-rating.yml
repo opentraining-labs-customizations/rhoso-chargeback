@@ -7,7 +7,7 @@
     PATH: "{{ ansible_env.PATH }}"
   vars:
     openstack_namespace: openstack
-    flavor_name: m1.tiny
+    flavor_name: tiny
     rating_cost: "0.3"
     group_name: instance_uptime_flavor_id
     service_name: instance
@@ -47,7 +47,7 @@
 
     - name: Set group ID
       ansible.builtin.set_fact:
-        group_id: "{{ (group_result.stdout | from_json)['Group ID'] }}"
+        group_id: "{{ (group_result.stdout | from_json | first)['Group ID'] }}"
 
     - name: Create service matching rule
       ansible.builtin.shell:
@@ -57,7 +57,7 @@
 
     - name: Set service ID
       ansible.builtin.set_fact:
-        service_id: "{{ (service_result.stdout | from_json)['Service ID'] }}"
+        service_id: "{{ (service_result.stdout | from_json | first)['Service ID'] }}"
 
     - name: Create field matching rule
       ansible.builtin.shell:
@@ -67,7 +67,7 @@
 
     - name: Set field ID
       ansible.builtin.set_fact:
-        field_id: "{{ (field_result.stdout | from_json)['Field ID'] }}"
+        field_id: "{{ (field_result.stdout | from_json | first)['Field ID'] }}"
 
     - name: Get flavor ID
       ansible.builtin.shell:
