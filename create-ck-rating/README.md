@@ -34,6 +34,16 @@ ansible-playbook create-ck-rating/create-ck-rating.yml \
 | `field_name`          | `flavor_id`                   | Field matching rule name             |
 | `mapping_type`        | `flat`                        | Mapping type (`flat` or `rate`)      |
 
+## Cleaning up
+
+To remove all rating resources created by this playbook (mappings, field, service, group) and disable the hashmap module:
+
+```bash
+ansible-playbook create-ck-rating/cleanup-ck-rating.yml
+```
+
+The cleanup playbook looks up each resource by name and deletes them in reverse dependency order. Steps are skipped gracefully if a resource doesn't exist, so it's safe to run after a partial setup or repeated runs.
+
 ## What the playbook does
 
 The steps below describe the individual OpenStack rating commands that the playbook automates.

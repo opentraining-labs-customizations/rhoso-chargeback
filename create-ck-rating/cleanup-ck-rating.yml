@@ -1,0 +1,107 @@
+---
+- name: "Clean up CloudKitty rating resources on RHOSO"
+  hosts: localhost
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ ansible_env.HOME + '/.kube/config' }}"
+    PATH: "{{ ansible_env.PATH }}"
+  vars:
+    openstack_namespace: openstack
+    group_name: instance_uptime_flavor_id
+    service_name: instance
+    field_name: flavor_id
+  tasks:
+    - name: Discover openstackclient pod
+      ansible.builtin.shell:
+        cmd: |
+          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name | head -1
+      register: osclient_pod
+      failed_when: osclient_pod.stdout == ""
+
+    - name: Set openstackclient pod name
+      ansible.builtin.set_fact:
+        os_pod: "{{ osclient_pod.stdout | regex_replace('^pod/', '') }}"
+
+    # --- Look up resource IDs ---
+
+    - name: Get service list
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap service list -f json
+      register: service_list
+
+    - name: Set service ID
+      ansible.builtin.set_fact:
+        service_id: "{{ (service_list.stdout | from_json | selectattr('Name', 'equalto', service_name) | first)['Service ID'] }}"
+      when: service_list.stdout | from_json | selectattr('Name', 'equalto', service_name) | list | length > 0
+
+    - name: Get field list
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap field list {{ service_id }} -f json
+      register: field_list
+      when: service_id is defined
+
+    - name: Set field ID
+      ansible.builtin.set_fact:
+        field_id: "{{ (field_list.stdout | from_json | selectattr('Name', 'equalto', field_name) | first)['Field ID'] }}"
+      when: field_list is not skipped and field_list.stdout | from_json | selectattr('Name', 'equalto', field_name) | list | length > 0
+
+    - name: Get mapping list
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap mapping list --field-id {{ field_id }} -f json
+      register: mapping_list
+      when: field_id is defined
+
+    - name: Set mapping IDs
+      ansible.builtin.set_fact:
+        mapping_ids: "{{ mapping_list.stdout | from_json | map(attribute='Mapping ID') | list }}"
+      when: mapping_list is not skipped and mapping_list.stdout | from_json | length > 0
+
+    - name: Get group list
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap group list -f json
+      register: group_list
+
+    - name: Set group ID
+      ansible.builtin.set_fact:
+        group_id: "{{ (group_list.stdout | from_json | selectattr('Name', 'equalto', group_name) | first)['Group ID'] }}"
+      when: group_list.stdout | from_json | selectattr('Name', 'equalto', group_name) | list | length > 0
+
+    # --- Delete resources in reverse order ---
+
+    - name: Delete mappings
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap mapping delete {{ item }}
+      loop: "{{ mapping_ids }}"
+      when: mapping_ids is defined and mapping_ids | length > 0
+
+    - name: Delete field
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap field delete {{ field_id }}
+      when: field_id is defined
+
+    - name: Delete service
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap service delete {{ service_id }}
+      when: service_id is defined
+
+    - name: Delete group
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap group delete {{ group_id }}
+      when: group_id is defined
+
+    - name: Disable hashmap module
+      ansible.builtin.shell:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating module disable hashmap
+
+    - name: Cleanup complete
+      ansible.builtin.debug:
+        msg: "All CloudKitty rating resources have been removed."
