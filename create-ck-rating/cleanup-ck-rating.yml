@@ -12,20 +12,20 @@
     field_name: flavor_id
   tasks:
     - name: Discover openstackclient pod
-      ansible.builtin.shell:
-        cmd: |
-          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name | head -1
+      ansible.builtin.command:
+        cmd: >
+          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name
       register: osclient_pod
-      failed_when: osclient_pod.stdout == ""
+      failed_when: osclient_pod.stdout_lines | length == 0
 
     - name: Set openstackclient pod name
       ansible.builtin.set_fact:
-        os_pod: "{{ osclient_pod.stdout | regex_replace('^pod/', '') }}"
+        os_pod: "{{ osclient_pod.stdout_lines[0] | regex_replace('^pod/', '') }}"
 
     # --- Look up resource IDs ---
 
     - name: Get service list
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap service list -f json
       register: service_list
@@ -36,7 +36,7 @@
       when: service_list.stdout | from_json | selectattr('Name', 'equalto', service_name) | list | length > 0
 
     - name: Get field list
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap field list {{ service_id }} -f json
       register: field_list
@@ -48,7 +48,7 @@
       when: field_list is not skipped and field_list.stdout | from_json | selectattr('Name', 'equalto', field_name) | list | length > 0
 
     - name: Get mapping list
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap mapping list --field-id {{ field_id }} -f json
       register: mapping_list
@@ -60,7 +60,7 @@
       when: mapping_list is not skipped and mapping_list.stdout | from_json | length > 0
 
     - name: Get group list
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap group list -f json
       register: group_list
@@ -73,32 +73,32 @@
     # --- Delete resources in reverse order ---
 
     - name: Delete mappings
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap mapping delete {{ item }}
       loop: "{{ mapping_ids }}"
       when: mapping_ids is defined and mapping_ids | length > 0
 
     - name: Delete field
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap field delete {{ field_id }}
       when: field_id is defined
 
     - name: Delete service
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap service delete {{ service_id }}
       when: service_id is defined
 
     - name: Delete group
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap group delete {{ group_id }}
       when: group_id is defined
 
     - name: Disable hashmap module
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating module disable hashmap
 

@@ -7,7 +7,7 @@
     PATH: "{{ ansible_env.PATH }}"
   vars:
     openstack_namespace: openstack
-    flavor_name: m1.tiny
+    flavor_name: tiny
     rating_cost: "0.3"
     group_name: instance_uptime_flavor_id
     service_name: instance
@@ -15,20 +15,20 @@
     mapping_type: flat
   tasks:
     - name: Discover openstackclient pod
-      ansible.builtin.shell:
-        cmd: |
-          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name | head -1
+      ansible.builtin.command:
+        cmd: >
+          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name
       register: osclient_pod
-      failed_when: osclient_pod.stdout == ""
+      failed_when: osclient_pod.stdout_lines | length == 0
 
     - name: Set openstackclient pod name
       ansible.builtin.set_fact:
-        os_pod: "{{ osclient_pod.stdout | regex_replace('^pod/', '') }}"
+        os_pod: "{{ osclient_pod.stdout_lines[0] | regex_replace('^pod/', '') }}"
 
     # --- Check 1: Hashmap module is enabled ---
 
     - name: Get rating module list
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating module list -f json
       register: module_list
@@ -44,7 +44,7 @@
     # --- Check 2: Group exists ---
 
     - name: Get hashmap group list
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap group list -f json
       register: group_list
@@ -63,7 +63,7 @@
     # --- Check 3: Service exists ---
 
     - name: Get hashmap service list
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap service list -f json
       register: service_list
@@ -82,7 +82,7 @@
     # --- Check 4: Field exists under service ---
 
     - name: Get hashmap field list for the service
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap field list {{ service_id }} -f json
       register: field_list
@@ -101,7 +101,7 @@
     # --- Check 5: Mapping exists with correct cost and type ---
 
     - name: Get hashmap mapping list for the field
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating hashmap mapping list --field-id {{ field_id }} -f json
       register: mapping_list
@@ -117,7 +117,7 @@
     # --- Check 6: Rating data is flowing (soft check) ---
 
     - name: Get rating summary
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: |
           oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating summary get -f json
       environment:

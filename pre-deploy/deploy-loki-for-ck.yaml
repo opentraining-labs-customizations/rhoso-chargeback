@@ -50,7 +50,7 @@ metadata:
 spec:
   containers:
   - name: minio
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
     command:
     - /bin/bash
     - -c
@@ -105,7 +105,7 @@ metadata:
   name: minio-console
   namespace: minio-dev
 spec:
-  host: console-minio-dev.apps-crc.testing
+  host: console-minio-dev.apps.ocp4.example.com
   to:
     kind: Service
     name: minio
@@ -120,7 +120,7 @@ metadata:
   name: minio-api
   namespace: minio-dev
 spec:
-  host: api-minio-dev.apps-crc.testing
+  host: api-minio-dev.apps.ocp4.example.com
   to:
     kind: Service
     name: minio

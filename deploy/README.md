@@ -1,6 +1,6 @@
 # deploy
 
-This playbook updates the OpenStack ControlPlane CR by enabling the Telemetry service, Ceilometer service, creates a MetricStorage and finally the CloudKitty service.
+This playbook updates the OpenStack Control Plane CR to enable Telemetry, Ceilometer, the MetricStorage and CloudKitty
 
 Run this after `pre-deploy` and before `create-ck-rating`.
 

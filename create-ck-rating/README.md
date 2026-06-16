@@ -27,7 +27,7 @@ ansible-playbook create-ck-rating/create-ck-rating.yml \
 | Variable              | Default                       | Description                          |
 |-----------------------|-------------------------------|--------------------------------------|
 | `openstack_namespace` | `openstack`                   | OpenShift namespace for the OS pods  |
-| `flavor_name`         | `m1.tiny`                     | Flavor to rate                       |
+| `flavor_name`         | `tiny`                     | Flavor to rate                       |
 | `rating_cost`         | `0.3`                         | Cost assigned to the flavor          |
 | `group_name`          | `instance_uptime_flavor_id`   | Rating group name                    |
 | `service_name`        | `instance`                    | Service matching rule name           |
@@ -86,7 +86,7 @@ $ openstack rating hashmap field create 6868b43d-0791-4789-a86e-45bab8dea4ab fla
 +-----------+--------------------------------------+--------------------------------------+
 
 # Obtain the id of the flavor we want to rate
-$ openstack flavor show m1.tiny
+$ openstack flavor show tiny
 +----------------------------+-----------------------+
 | Field                      | Value                 |
 +----------------------------+-----------------------+
@@ -96,7 +96,7 @@ $ openstack flavor show m1.tiny
 | description                | None                  |
 | disk                       | 1                     |
 | id                         | 1                     |
-| name                       | m1.tiny               |
+| name                       | tiny               |
 | os-flavor-access:is_public | True                  |
 | properties                 | hw_rng:allowed='True' |
 | ram                        | 512                   |
@@ -105,7 +105,7 @@ $ openstack flavor show m1.tiny
 | vcpus                      | 1                     |
 +----------------------------+-----------------------+
 
-# Create a mapping in the instance_uptime_flavor group that will map m1.tiny instance to a cost of 0.3
+# Create a mapping in the instance_uptime_flavor group that will map tiny instance to a cost of 0.3
 $ openstack rating hashmap mapping create 0.3 \
  --field-id 0819eef5-3b54-49f4-935b-c286de843b8f \
  --value 1 \
