@@ -14,6 +14,12 @@ Ansible playbook that installs Loki and an S3-compatible storage backend (MinIO)
 
 See [pre-deploy/README.md](pre-deploy/README.md) for details.
 
+### deploy
+
+Ansible playbook that updates the OpenStack deployment to enable CloudKitty and its dependencies (telemetry, Ceilometer, MetricStorage). Run this after `pre-deploy` and before `create-ck-rating`.
+
+See [deploy/README.md](deploy/README.md) for details.
+
 ### create-ck-rating
 
 Ansible playbook that automates the execution of the step-by-step exercise available in the training.

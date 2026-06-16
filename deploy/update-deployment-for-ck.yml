@@ -1,0 +1,85 @@
+---
+- name: "Update OpenStack deployment for CloudKitty"
+  hosts: localhost
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ ansible_env.HOME + '/.kube/config' }}"
+    PATH: "{{ ansible_env.PATH }}"
+  vars:
+    openstack_namespace: openstack
+    osp_secret_name: osp-secret
+  tasks:
+    - name: Get existing password from osp-secret
+      ansible.builtin.command:
+        cmd: >
+          oc get secret {{ osp_secret_name }} -n {{ openstack_namespace }}
+          -o jsonpath='{.data.CeilometerPassword}'
+      register: existing_password
+      failed_when: existing_password.stdout == ""
+
+    - name: Add CloudKittyPassword to osp-secret
+      ansible.builtin.command:
+        cmd: >
+          oc patch secret {{ osp_secret_name }} -n {{ openstack_namespace }}
+          --type merge
+          -p '{"data":{"CloudKittyPassword":"{{ existing_password.stdout }}"}}'
+
+    - name: Verify CloudKittyPassword was added
+      ansible.builtin.command:
+        cmd: >
+          oc get secret {{ osp_secret_name }} -n {{ openstack_namespace }}
+          -o jsonpath='{.data.CloudKittyPassword}'
+      register: password_check
+      failed_when: password_check.stdout == ""
+
+    - name: Discover OpenStackControlPlane CR name
+      ansible.builtin.command:
+        cmd: >
+          oc get openstackcontrolplane -n {{ openstack_namespace }} -o name
+      register: controlplane_result
+      failed_when: controlplane_result.stdout_lines | length == 0
+
+    - name: Set control plane name
+      ansible.builtin.set_fact:
+        controlplane_name: "{{ controlplane_result.stdout_lines[0] | regex_replace('^openstackcontrolplane.core.openstack.org/', '') }}"
+
+    - name: Enable telemetry service
+      ansible.builtin.command:
+        cmd: >
+          oc patch openstackcontrolplane/{{ controlplane_name }}
+          -n {{ openstack_namespace }}
+          --type merge
+          -p '{"spec":{"telemetry":{"enabled":true}}}'
+
+    - name: Enable Ceilometer
+      ansible.builtin.command:
+        cmd: >
+          oc patch openstackcontrolplane/{{ controlplane_name }}
+          -n {{ openstack_namespace }}
+          --type merge
+          -p '{"spec":{"telemetry":{"ceilometer":{"enabled":true}}}}'
+
+    - name: Enable and configure MetricStorage
+      ansible.builtin.command:
+        cmd: >
+          oc patch openstackcontrolplane/{{ controlplane_name }}
+          -n {{ openstack_namespace }}
+          --type merge
+          -p '{"spec":{"telemetry":{"metricStorage":{"enabled":true,"monitoringStack":{"alertingEnabled":true,"scrapeInterval":"30s","storage":{"strategy":"persistent","retention":"24h","persistent":{"pvcStorageRequest":"20G","pvcStorageClass":"nfs-storage"}}}}}}}'
+
+    - name: Enable CloudKitty
+      ansible.builtin.command:
+        cmd: >
+          oc patch openstackcontrolplane/{{ controlplane_name }}
+          -n {{ openstack_namespace }}
+          --type merge
+          -p '{"spec":{"cloudkitty":{}}}'
+
+    - name: Wait for OpenStackControlPlane to be ready
+      ansible.builtin.command:
+        cmd: |
+          oc get openstackcontrolplane/{{ controlplane_name }} -n {{ openstack_namespace }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: ready_status
+      until: ready_status.stdout == "True"
+      retries: 60
+      delay: 30
