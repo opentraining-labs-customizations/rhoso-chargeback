@@ -18,7 +18,7 @@
     - name: Deploy loki operator
       ansible.builtin.command:
         cmd: |
-          oc apply -f {{ ansible_user_dir }}/pre-deploy/deploy-loki-for-ck.yaml
+          oc apply -f {{ playbook_dir }}/deploy-loki-for-ck.yaml
 
     - name: Wait up to 5 minutes until the Loki CSV is Succeeded
       ansible.builtin.command:
@@ -26,11 +26,6 @@
           oc get csv -n openshift-operators-redhat -o json
       ignore_errors: true
       register: output
-      until: >
-        output.rc == 0 and
-        (output.stdout | from_json).items
-        | selectattr('metadata.name', 'match', 'loki-operator.*')
-        | selectattr('status.phase', 'equalto', 'Succeeded')
-        | list | length > 0
+      until: output.rc == 0 and (output.stdout | from_json)["items"] | selectattr('metadata.name', 'match', 'loki-operator.*') | selectattr('status.phase', 'equalto', 'Succeeded') | list | length > 0
       retries: 30
       delay: 10

@@ -26,7 +26,7 @@ The manifests (`deploy-loki-for-ck.yaml`) create the following resources:
 ## How to run
 
 ```bash
-ansible-playbook /path/to/pre-deploy/cloudkitty-pre_deploy-install_loki.yml
+ansible-playbook pre-deploy/cloudkitty-pre_deploy-install_loki.yml
 ```
 
 By default it runs against `localhost`. To target a remote host or override variables:
@@ -35,7 +35,7 @@ By default it runs against `localhost`. To target a remote host or override vari
 ansible-playbook \
   -i <inventory_file> \
   -e "ansible_user_dir=/path/to/rhoso-chargeback" \
-  /path/to/pre-deploy/cloudkitty-pre_deploy-install_loki.yml
+  pre-deploy/cloudkitty-pre_deploy-install_loki.yml
 ```
 
 The playbook references `{{ ansible_user_dir }}/pre-deploy/deploy-loki-for-ck.yaml`, so `ansible_user_dir` must point to the parent of `pre-deploy/`. When running locally, Ansible sets `ansible_user_dir` to the remote user's home directory automatically, so the repo (or at least the `pre-deploy/` directory) needs to be located at `~/pre-deploy/`, or you should override `ansible_user_dir` with `-e` as shown above.
