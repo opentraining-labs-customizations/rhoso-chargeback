@@ -10,7 +10,7 @@ There are also playbooks for automatically executing the step by step in the tra
 
 ### pre-deploy
 
-Ansible playbook that installs Loki and an S3-compatible storage backend (MinIO) required by CloudKitty. Run this before starting the training exercise.
+Ansible playbook that installs Loki with an S3-compatible storage backend (MinIO) and COO required by CloudKitty. Run this before starting the training exercise.
 
 See [pre-deploy/README.md](pre-deploy/README.md) for details.
 
