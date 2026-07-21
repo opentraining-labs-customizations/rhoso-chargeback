@@ -49,7 +49,7 @@
           oc patch openstackcontrolplane/{{ controlplane_name }}
           -n {{ openstack_namespace }}
           --type merge
-          -p '{"spec":{"telemetry":{"enabled":true}}}'
+          -p '{"spec":{"template":{"telemetry":{"enabled":true}}}}'
 
     - name: Enable Ceilometer
       ansible.builtin.command:
@@ -57,7 +57,7 @@
           oc patch openstackcontrolplane/{{ controlplane_name }}
           -n {{ openstack_namespace }}
           --type merge
-          -p '{"spec":{"telemetry":{"ceilometer":{"enabled":true}}}}'
+          -p '{"spec":{"template":{"telemetry":{"ceilometer":{"enabled":true}}}}}'
 
     - name: Enable and configure MetricStorage
       ansible.builtin.command:
@@ -65,7 +65,7 @@
           oc patch openstackcontrolplane/{{ controlplane_name }}
           -n {{ openstack_namespace }}
           --type merge
-          -p '{"spec":{"telemetry":{"metricStorage":{"enabled":true,"monitoringStack":{"alertingEnabled":true,"scrapeInterval":"30s","storage":{"strategy":"persistent","retention":"24h","persistent":{"pvcStorageRequest":"20G","pvcStorageClass":"nfs-storage"}}}}}}}'
+          -p '{"spec":{"template":{"telemetry":{"metricStorage":{"enabled":true,"monitoringStack":{"alertingEnabled":true,"scrapeInterval":"30s","storage":{"strategy":"persistent","retention":"24h","persistent":{"pvcStorageRequest":"20G","pvcStorageClass":"nfs-storage"}}}}}}}}'
 
     - name: Enable CloudKitty
       ansible.builtin.command:
@@ -73,7 +73,7 @@
           oc patch openstackcontrolplane/{{ controlplane_name }}
           -n {{ openstack_namespace }}
           --type merge
-          -p '{"spec":{"cloudkitty":{}}}'
+          -p '{"spec":{"template":{"cloudkitty":{}}}}'
 
     - name: Wait for OpenStackControlPlane to be ready
       ansible.builtin.command:
