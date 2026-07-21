@@ -67,6 +67,17 @@
           --type merge
           -p '{"spec":{"telemetry":{"template":{"metricStorage":{"enabled":true,"monitoringStack":{"alertingEnabled":true,"scrapeInterval":"30s","storage":{"strategy":"persistent","retention":"24h","persistent":{"pvcStorageRequest":"20G","pvcStorageClass":"nfs-storage"}}}}}}}}'
 
+      # Reset the cloudkitty section to force the operator to repopulate its
+      # defaults before enabling it. Without this, the CloudKitty deployment
+      # can come up misconfigured. Known issue: OSPRH-26924 and OSPRH-27383.
+    - name: Reset CloudKitty section to repopulate defaults
+      ansible.builtin.command:
+        cmd: >
+          oc patch openstackcontrolplane/{{ controlplane_name }}
+          -n {{ openstack_namespace }}
+          --type merge
+          -p '{"spec":{"telemetry":{"template":{"cloudkitty":{}}}}}'
+
     - name: Enable CloudKitty
       ansible.builtin.command:
         cmd: >
