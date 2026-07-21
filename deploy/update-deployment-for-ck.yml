@@ -73,7 +73,7 @@
           oc patch openstackcontrolplane/{{ controlplane_name }}
           -n {{ openstack_namespace }}
           --type merge
-          -p '{"spec":{"telemetry":{"template":{"cloudkitty":{"enabled":true}}}}}'
+          -p '{"spec":{"telemetry":{"template":{"cloudkitty":{"enabled":true,"s3StorageConfig":{"secret":{"name":"cloudkitty-loki-s3","type":"s3"}}}}}}}'
 
     - name: Wait for OpenStackControlPlane to be ready
       ansible.builtin.command:
