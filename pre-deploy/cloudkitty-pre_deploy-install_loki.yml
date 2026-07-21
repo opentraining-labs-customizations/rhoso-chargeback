@@ -26,6 +26,13 @@
           oc get csv -n openshift-operators-redhat -o json
       ignore_errors: true
       register: output
-      until: output.rc == 0 and (output.stdout | from_json)["items"] | selectattr('metadata.name', 'match', 'loki-operator.*') | selectattr('status.phase', 'equalto', 'Succeeded') | list | length > 0
+      until: >
+        output.rc == 0 and
+        (output.stdout | from_json)["items"]
+        | selectattr('metadata.name', 'match', 'loki-operator.*')
+        | selectattr('status', 'defined')
+        | selectattr('status.phase', 'defined')
+        | selectattr('status.phase', 'equalto', 'Succeeded')
+        | list | length > 0
       retries: 30
       delay: 10
