@@ -1,5 +1,5 @@
 ---
-- name: "Install loki for cloudkitty"
+- name: "Install cloudkitty dependencies"
   hosts: localhost
   gather_facts: true
   environment:
@@ -30,6 +30,28 @@
         output.rc == 0 and
         (output.stdout | from_json)["items"]
         | selectattr('metadata.name', 'match', 'loki-operator.*')
+        | selectattr('status', 'defined')
+        | selectattr('status.phase', 'defined')
+        | selectattr('status.phase', 'equalto', 'Succeeded')
+        | list | length > 0
+      retries: 30
+      delay: 10
+
+    - name: Deploy COO
+      ansible.builtin.command:
+        cmd: |
+          oc apply -f {{ playbook_dir }}/deploy-coo-for-ck.yaml
+
+    - name: Wait up to 5 minutes until the COO CSV is Succeeded
+      ansible.builtin.command:
+        cmd: >
+          oc get csv -n openshift-operators -o json
+      ignore_errors: true
+      register: output
+      until: >
+        output.rc == 0 and
+        (output.stdout | from_json)["items"]
+        | selectattr('metadata.name', 'match', 'cluster-observability-operator.*')
         | selectattr('status', 'defined')
         | selectattr('status.phase', 'defined')
         | selectattr('status.phase', 'equalto', 'Succeeded')
