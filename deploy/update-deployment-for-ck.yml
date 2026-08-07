@@ -67,27 +67,16 @@
           --type merge
           -p '{"spec":{"telemetry":{"template":{"metricStorage":{"enabled":true,"monitoringStack":{"alertingEnabled":true,"scrapeInterval":"30s","storage":{"strategy":"persistent","retention":"24h","persistent":{"pvcStorageRequest":"20G","pvcStorageClass":"nfs-storage"}}}}}}}}'
 
-      # Remove the cloudkitty section to force the operator to repopulate its
-      # defaults before enabling it. Without this, the CloudKitty deployment
-      # can come up misconfigured. Known issue: OSPRH-26924 and OSPRH-27383.
-      # A merge patch of {} is a no-op here since it won't clear existing
-      # content, so a JSON patch "remove" is required instead.
-    - name: Reset CloudKitty section to repopulate defaults
-      ansible.builtin.command:
-        cmd: >
-          oc patch openstackcontrolplane/{{ controlplane_name }}
-          -n {{ openstack_namespace }}
-          --type json
-          -p '[{"op":"remove","path":"/spec/telemetry/template/cloudkitty"}]'
-      ignore_errors: true
-
-    - name: Enable CloudKitty
+      # Explicitly set the full CloudKitty configuration to work around
+      # defaults not being correctly populated. Known issue: OSPRH-26924
+      # and OSPRH-27383.
+    - name: Enable and configure CloudKitty
       ansible.builtin.command:
         cmd: >
           oc patch openstackcontrolplane/{{ controlplane_name }}
           -n {{ openstack_namespace }}
           --type merge
-          -p '{"spec":{"telemetry":{"template":{"cloudkitty":{"enabled":true,"s3StorageConfig":{"secret":{"name":"cloudkitty-loki-s3","type":"s3"}}}}}}}'
+          -p '{"spec":{"telemetry":{"template":{"cloudkitty":{"enabled":true,"lokiRetentionDays":95,"lokiStackSize":"1x.demo","memcachedInstance":"memcached","databaseAccount":"cloudkitty","databaseInstance":"openstack","passwordSelector":{"aodhService":"AodhPassword","ceilometerService":"CeilometerPassword","cloudKittyService":"CloudKittyPassword"},"s3StorageConfig":{"schemas":[{"effectiveDate":"2024-11-18","version":"v13"}],"secret":{"name":"cloudkitty-loki-s3","type":"s3"}},"secret":"osp-secret"}}}}}'
 
     - name: Wait for OpenStackControlPlane to be ready
       ansible.builtin.command:
