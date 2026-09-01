@@ -7,7 +7,7 @@
     PATH: "{{ ansible_env.PATH }}"
   vars:
     openstack_namespace: openstack
-    flavor_name: m1.tiny
+    flavor_name: m1.small
     rating_cost: "0.3"
     group_name: instance_uptime_flavor_id
     service_name: instance
