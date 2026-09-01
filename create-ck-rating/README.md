@@ -48,6 +48,7 @@ The cleanup playbook looks up each resource by name and deletes them in reverse 
 
 The steps below describe the individual OpenStack rating commands that the playbook automates.
 
+```bash
 # Enable Hashmap module
 $ openstack rating module enable hashmap
 
@@ -129,3 +130,4 @@ $ openstack rating summary get
 
 # Filter by type
 $ openstack rating summary get -g type
+```

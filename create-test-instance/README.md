@@ -55,6 +55,7 @@ The cleanup playbook looks up the instance and image by name and deletes them, s
 
 The steps below describe the individual OpenStack commands that the playbook automates.
 
+```bash
 # Download a Cirros image and upload it to the Image service
 $ curl -fsSL https://download.cirros-cloud.net/0.6.2/cirros-0.6.2-x86_64-disk.img | \
   openstack image create --disk-format qcow2 --container-format bare --public cirros
@@ -64,3 +65,4 @@ $ openstack server create --flavor m1.small --image cirros --network private tes
 
 # Confirm the instance reached ACTIVE
 $ openstack server show test-vm
+```
