@@ -1,0 +1,76 @@
+---
+- name: "Create a test instance to generate consumption data on RHOSO"
+  hosts: localhost
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ ansible_env.HOME + '/.kube/config' }}"
+    PATH: "{{ ansible_env.PATH }}"
+  vars:
+    openstack_namespace: openstack
+    image_name: cirros
+    image_url: https://download.cirros-cloud.net/0.6.2/cirros-0.6.2-x86_64-disk.img
+    flavor_name: m1.small
+    instance_name: test-vm
+    network_name: private
+  tasks:
+    - name: Discover openstackclient pod
+      ansible.builtin.command:
+        cmd: >
+          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name
+      register: osclient_pod
+      failed_when: osclient_pod.stdout_lines | length == 0
+
+    - name: Set openstackclient pod name
+      ansible.builtin.set_fact:
+        os_pod: "{{ osclient_pod.stdout_lines[0] | regex_replace('^pod/', '') }}"
+
+    - name: Check if image already exists
+      ansible.builtin.command:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack image list --name {{ image_name }} -f json
+      register: image_list
+
+    - name: Download and upload image to the Image service
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          curl -fsSL {{ image_url }} | \
+          oc exec -i -n {{ openstack_namespace }} {{ os_pod }} -- \
+          openstack image create --disk-format qcow2 --container-format bare --public {{ image_name }}
+        executable: /bin/bash
+      when: image_list.stdout | from_json | selectattr('Name', 'equalto', image_name) | list | length == 0
+
+    - name: Check if test instance already exists
+      ansible.builtin.command:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack server list --name {{ instance_name }} -f json
+      register: server_list
+
+    - name: Create test instance
+      ansible.builtin.command:
+        cmd: >
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} --
+          openstack server create
+          --flavor {{ flavor_name }}
+          --image {{ image_name }}
+          --network {{ network_name }}
+          {{ instance_name }}
+      when: server_list.stdout | from_json | selectattr('Name', 'equalto', instance_name) | list | length == 0
+
+    - name: Wait for test instance to become ACTIVE
+      ansible.builtin.command:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack server show {{ instance_name }} -f json
+      register: server_show
+      until: (server_show.stdout | from_json).status in ['ACTIVE', 'ERROR']
+      retries: 30
+      delay: 10
+
+    - name: Fail if test instance did not boot
+      ansible.builtin.fail:
+        msg: "Instance {{ instance_name }} failed to boot (status ERROR). Ensure the flavor is large enough for the image."
+      when: (server_show.stdout | from_json).status == 'ERROR'
+
+    - name: Display test instance result
+      ansible.builtin.debug:
+        msg: "Test instance {{ instance_name }} is {{ (server_show.stdout | from_json).status }}."

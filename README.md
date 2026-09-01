@@ -26,6 +26,12 @@ Ansible playbook that automates the execution of the step-by-step exercise avail
 
 See [create-ck-rating/README.md](create-ck-rating/README.md) for details.
 
+### create-test-instance
+
+Ansible playbook that launches a test instance (from a Cirros image) so CloudKitty has real consumption data to rate. Run this after `create-ck-rating` so the rating rule charges the instance's usage.
+
+See [create-test-instance/README.md](create-test-instance/README.md) for details.
+
 ### validation
 
 Ansible playbook that validates that the step-by-step exercise has been successfully executed.
