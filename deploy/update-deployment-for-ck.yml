@@ -76,7 +76,7 @@
           oc patch openstackcontrolplane/{{ controlplane_name }}
           -n {{ openstack_namespace }}
           --type merge
-          -p '{"spec":{"telemetry":{"template":{"cloudkitty":{"enabled":true,"lokiRetentionDays":95,"lokiStackSize":"1x.demo","memcachedInstance":"memcached","databaseAccount":"cloudkitty","databaseInstance":"openstack","passwordSelector":{"aodhService":"AodhPassword","ceilometerService":"CeilometerPassword","cloudKittyService":"CloudKittyPassword"},"s3StorageConfig":{"schemas":[{"effectiveDate":"2024-11-18","version":"v13"}],"secret":{"name":"cloudkitty-loki-s3","type":"s3"}},"secret":"osp-secret","serviceUser":"cloudkitty"}}}}}'
+          -p '{"spec":{"telemetry":{"template":{"cloudkitty":{"enabled":true,"apiTimeout":60,"period":300,"lokiRetentionDays":95,"lokiStackSize":"1x.demo","memcachedInstance":"memcached","databaseAccount":"cloudkitty","databaseInstance":"openstack","passwordSelector":{"aodhService":"AodhPassword","ceilometerService":"CeilometerPassword","cloudKittyService":"CloudKittyPassword"},"s3StorageConfig":{"schemas":[{"effectiveDate":"2020-10-11","version":"v11"}],"secret":{"name":"cloudkitty-loki-s3","type":"s3"}},"secret":"osp-secret","serviceUser":"cloudkitty"}}}}}'
 
     - name: Wait for OpenStackControlPlane to be ready
       ansible.builtin.command:
