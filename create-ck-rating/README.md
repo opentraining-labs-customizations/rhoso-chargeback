@@ -18,7 +18,7 @@ To override default variables (e.g. flavor name or cost):
 
 ```bash
 ansible-playbook create-ck-rating/create-ck-rating.yml \
-  -e flavor_name=m1.small \
+  -e flavor_name=m1.large \
   -e rating_cost=0.5
 ```
 
@@ -27,7 +27,7 @@ ansible-playbook create-ck-rating/create-ck-rating.yml \
 | Variable              | Default                       | Description                          |
 |-----------------------|-------------------------------|--------------------------------------|
 | `openstack_namespace` | `openstack`                   | OpenShift namespace for the OS pods  |
-| `flavor_name`         | `m1.tiny`                  | Flavor to rate                       |
+| `flavor_name`         | `m1.small`                 | Flavor to rate                       |
 | `rating_cost`         | `0.3`                         | Cost assigned to the flavor          |
 | `group_name`          | `instance_uptime_flavor_id`   | Rating group name                    |
 | `service_name`        | `instance`                    | Service matching rule name           |
@@ -86,36 +86,36 @@ $ openstack rating hashmap field create 6868b43d-0791-4789-a86e-45bab8dea4ab fla
 +-----------+--------------------------------------+--------------------------------------+
 
 # Obtain the id of the flavor we want to rate
-$ openstack flavor show m1.tiny
-+----------------------------+-----------------------+
-| Field                      | Value                 |
-+----------------------------+-----------------------+
-| OS-FLV-DISABLED:disabled   | False                 |
-| OS-FLV-EXT-DATA:ephemeral  | 0                     |
-| access_project_ids         | None                  |
-| description                | None                  |
-| disk                       | 1                     |
-| id                         | 1                     |
-| name                       | m1.tiny            |
-| os-flavor-access:is_public | True                  |
-| properties                 | hw_rng:allowed='True' |
-| ram                        | 512                   |
-| rxtx_factor                | 1.0                   |
-| swap                       | 0                     |
-| vcpus                      | 1                     |
-+----------------------------+-----------------------+
+$ openstack flavor show m1.small
++----------------------------+--------------------------------------+
+| Field                      | Value                                |
++----------------------------+--------------------------------------+
+| OS-FLV-DISABLED:disabled   | False                                |
+| OS-FLV-EXT-DATA:ephemeral  | 0                                    |
+| access_project_ids         | None                                 |
+| description                | None                                 |
+| disk                       | 10                                   |
+| id                         | 2acd2a44-0fb8-4c38-9a34-aed6c4d20ed8 |
+| name                       | m1.small                             |
+| os-flavor-access:is_public | True                                 |
+| properties                 |                                      |
+| ram                        | 2048                                 |
+| rxtx_factor                | 1.0                                  |
+| swap                       |                                      |
+| vcpus                      | 1                                    |
++----------------------------+--------------------------------------+
 
-# Create a mapping in the instance_uptime_flavor group that will map m1.tiny instance to a cost of 0.3
+# Create a mapping in the instance_uptime_flavor group that will map m1.small instance to a cost of 0.3
 $ openstack rating hashmap mapping create 0.3 \
  --field-id 0819eef5-3b54-49f4-935b-c286de843b8f \
- --value 1 \
+ --value 2acd2a44-0fb8-4c38-9a34-aed6c4d20ed8 \
  -g a338809f-0191-4a16-a963-42354b533203 \
  -t flat
-+--------------------------------------+-------+--------------------------------+------+--------------------------------------+------------+--------------------------------------+------------+
-| Mapping ID                           | Value | Cost                           | Type | Field ID                             | Service ID | Group ID                             | Project ID |
-+--------------------------------------+-------+--------------------------------+------+--------------------------------------+------------+--------------------------------------+------------+
-| f3d01510-34b6-47d9-aa58-f2b636eed479 | 1     | 0.2999999999999999888977697537 | flat | 0819eef5-3b54-49f4-935b-c286de843b8f | None       | a338809f-0191-4a16-a963-42354b533203 | None       |
-+--------------------------------------+-------+--------------------------------+------+--------------------------------------+------------+--------------------------------------+------------+
++--------------------------------------+--------------------------------------+--------------------------------+------+--------------------------------------+------------+--------------------------------------+------------+
+| Mapping ID                           | Value                                | Cost                           | Type | Field ID                             | Service ID | Group ID                             | Project ID |
++--------------------------------------+--------------------------------------+--------------------------------+------+--------------------------------------+------------+--------------------------------------+------------+
+| f3d01510-34b6-47d9-aa58-f2b636eed479 | 2acd2a44-0fb8-4c38-9a34-aed6c4d20ed8 | 0.2999999999999999888977697537 | flat | 0819eef5-3b54-49f4-935b-c286de843b8f | None       | a338809f-0191-4a16-a963-42354b533203 | None       |
++--------------------------------------+--------------------------------------+--------------------------------+------+--------------------------------------+------------+--------------------------------------+------------+
 
 
 # Debug the calculated ratings
