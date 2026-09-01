@@ -1,0 +1,50 @@
+---
+- name: "Clean up the test instance and image on RHOSO"
+  hosts: localhost
+  gather_facts: true
+  environment:
+    KUBECONFIG: "{{ ansible_env.HOME + '/.kube/config' }}"
+    PATH: "{{ ansible_env.PATH }}"
+  vars:
+    openstack_namespace: openstack
+    image_name: cirros
+    instance_name: test-vm
+  tasks:
+    - name: Discover openstackclient pod
+      ansible.builtin.command:
+        cmd: >
+          oc get pod -n {{ openstack_namespace }} -l service=openstackclient -o name
+      register: osclient_pod
+      failed_when: osclient_pod.stdout_lines | length == 0
+
+    - name: Set openstackclient pod name
+      ansible.builtin.set_fact:
+        os_pod: "{{ osclient_pod.stdout_lines[0] | regex_replace('^pod/', '') }}"
+
+    - name: Get server list
+      ansible.builtin.command:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack server list --name {{ instance_name }} -f json
+      register: server_list
+
+    - name: Delete test instance
+      ansible.builtin.command:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack server delete {{ instance_name }} --wait
+      when: server_list.stdout | from_json | selectattr('Name', 'equalto', instance_name) | list | length > 0
+
+    - name: Get image list
+      ansible.builtin.command:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack image list --name {{ image_name }} -f json
+      register: image_list
+
+    - name: Delete image
+      ansible.builtin.command:
+        cmd: |
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack image delete {{ image_name }}
+      when: image_list.stdout | from_json | selectattr('Name', 'equalto', image_name) | list | length > 0
+
+    - name: Cleanup complete
+      ansible.builtin.debug:
+        msg: "The test instance and image have been removed."
