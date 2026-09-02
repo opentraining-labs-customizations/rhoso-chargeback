@@ -96,9 +96,13 @@
         msg: "Rating mapping created: {{ mapping_result.stdout | from_json }}"
 
     - name: Get rating dataframes
-      ansible.builtin.command:
-        cmd: |
-          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating dataframes get -f json
+      ansible.builtin.shell:
+        cmd: >
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} --
+          openstack rating dataframes get
+          --begin $(date -u +%Y-%m-%dT00:00:00)
+          --end $(date -u +%Y-%m-%dT%H:%M:%S)
+          -f json
       register: dataframes_result
       ignore_errors: true
 
@@ -108,9 +112,13 @@
       when: dataframes_result.rc == 0
 
     - name: Get rating summary
-      ansible.builtin.command:
-        cmd: |
-          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating summary get -f json
+      ansible.builtin.shell:
+        cmd: >
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} --
+          openstack rating summary get
+          --begin $(date -u +%Y-%m-%dT00:00:00)
+          --end $(date -u +%Y-%m-%dT%H:%M:%S)
+          -f json
       environment:
         OS_RATING_API_VERSION: "2"
       register: summary_result
@@ -122,9 +130,13 @@
       when: summary_result.rc == 0
 
     - name: Get rating summary by type
-      ansible.builtin.command:
-        cmd: |
-          oc exec -n {{ openstack_namespace }} {{ os_pod }} -- openstack rating summary get -g type -f json
+      ansible.builtin.shell:
+        cmd: >
+          oc exec -n {{ openstack_namespace }} {{ os_pod }} --
+          openstack rating summary get -g type
+          --begin $(date -u +%Y-%m-%dT00:00:00)
+          --end $(date -u +%Y-%m-%dT%H:%M:%S)
+          -f json
       environment:
         OS_RATING_API_VERSION: "2"
       register: summary_by_type_result

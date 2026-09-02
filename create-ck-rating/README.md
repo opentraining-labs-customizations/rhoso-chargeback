@@ -120,14 +120,14 @@ $ openstack rating hashmap mapping create 0.3 \
 
 
 # Debug the calculated ratings
-$ openstack rating dataframes get
+$ openstack rating dataframes get --begin $(date -u +%Y-%m-%dT00:00:00) --end $(date -u +%Y-%m-%dT%H:%M:%S)
 
 # This will not be needed in the final version
 export OS_RATING_API_VERSION=2
 
 # Get a rating report
-$ openstack rating summary get
+$ openstack rating summary get --begin $(date -u +%Y-%m-%dT00:00:00) --end $(date -u +%Y-%m-%dT%H:%M:%S)
 
 # Filter by type
-$ openstack rating summary get -g type
+$ openstack rating summary get -g type --begin $(date -u +%Y-%m-%dT00:00:00) --end $(date -u +%Y-%m-%dT%H:%M:%S)
 ```
