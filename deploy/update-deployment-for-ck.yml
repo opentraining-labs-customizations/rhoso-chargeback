@@ -86,3 +86,59 @@
       until: ready_status.stdout == "True"
       retries: 60
       delay: 30
+
+      # Add telemetry to the compute nodes (EDPM) so ceilometer-compute
+      # runs and CloudKitty gets per-instance consumption data.
+    - name: Discover OpenStackDataPlaneNodeSet name
+      ansible.builtin.command:
+        cmd: >
+          oc get openstackdataplanenodeset -n {{ openstack_namespace }}
+          -o jsonpath='{.items[0].metadata.name}'
+      register: nodeset_result
+      failed_when: nodeset_result.stdout == ""
+
+    - name: Get current dataplane services list
+      ansible.builtin.command:
+        cmd: >
+          oc get openstackdataplanenodeset/{{ nodeset_result.stdout }}
+          -n {{ openstack_namespace }}
+          -o jsonpath='{.spec.services}'
+      register: nodeset_services
+      changed_when: false
+
+    - name: Add telemetry service to the compute node set
+      ansible.builtin.command:
+        cmd: >
+          oc patch openstackdataplanenodeset/{{ nodeset_result.stdout }}
+          -n {{ openstack_namespace }}
+          --type json
+          -p '[{"op":"add","path":"/spec/services/-","value":"telemetry"}]'
+      when: "'telemetry' not in nodeset_services.stdout"
+
+    - name: Generate a unique dataplane deployment name
+      ansible.builtin.set_fact:
+        deployment_name: "telemetry-deploy-{{ ansible_date_time.iso8601_basic_short | lower }}"
+
+    - name: Create a new OpenStackDataPlaneDeployment to roll out telemetry
+      ansible.builtin.command:
+        cmd: oc apply -f -
+        stdin: |
+          apiVersion: dataplane.openstack.org/v1beta1
+          kind: OpenStackDataPlaneDeployment
+          metadata:
+            name: {{ deployment_name }}
+            namespace: {{ openstack_namespace }}
+          spec:
+            nodeSets:
+              - {{ nodeset_result.stdout }}
+
+    - name: Wait for the dataplane deployment to complete
+      ansible.builtin.command:
+        cmd: >
+          oc get openstackdataplanedeployment/{{ deployment_name }}
+          -n {{ openstack_namespace }}
+          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: dataplane_ready
+      until: dataplane_ready.stdout == "True"
+      retries: 120
+      delay: 30
