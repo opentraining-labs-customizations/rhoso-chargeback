@@ -118,16 +118,7 @@ $ openstack rating hashmap mapping create 0.3 \
 | f3d01510-34b6-47d9-aa58-f2b636eed479 | 2acd2a44-0fb8-4c38-9a34-aed6c4d20ed8 | 0.2999999999999999888977697537 | flat | 0819eef5-3b54-49f4-935b-c286de843b8f | None       | a338809f-0191-4a16-a963-42354b533203 | None       |
 +--------------------------------------+--------------------------------------+--------------------------------+------+--------------------------------------+------------+--------------------------------------+------------+
 
-
-# Debug the calculated ratings
-$ openstack rating dataframes get --begin $(date -u +%Y-%m-%dT00:00:00) --end $(date -u +%Y-%m-%dT%H:%M:%S)
-
-# This will not be needed in the final version
-export OS_RATING_API_VERSION=2
-
-# Get a rating report
-$ openstack rating summary get --begin $(date -u +%Y-%m-%dT00:00:00) --end $(date -u +%Y-%m-%dT%H:%M:%S)
-
-# Filter by type
-$ openstack rating summary get -g type --begin $(date -u +%Y-%m-%dT00:00:00) --end $(date -u +%Y-%m-%dT%H:%M:%S)
 ```
+
+Once the mapping is in place, use the `validate-ck-rating` playbook to confirm the
+configuration and to inspect the calculated rating dataframes and summaries.

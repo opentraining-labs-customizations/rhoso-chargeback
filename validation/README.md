@@ -32,3 +32,16 @@ ansible-playbook validation/validate-ck-rating.yml \
 | Field exists | Field `flavor_id` not found under the service |
 | Mapping exists | No mapping with the expected type and group |
 | Rating data flowing | Soft check — warns but does not fail if no data yet |
+
+## Rating reports
+
+As part of the "rating data flowing" soft check, the playbook also prints the
+rating data calculated for the current UTC day. These steps are informational
+and never fail the run:
+
+- **Dataframes** — `openstack rating dataframes get`
+- **Summary** — `openstack rating summary get`
+- **Summary by type** — `openstack rating summary get -g type`
+
+Each query is scoped with `--begin`/`--end` to the start of the current UTC day
+through the current time, so the reports reflect recently rated usage.
